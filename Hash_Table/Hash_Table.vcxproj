@@ -130,7 +130,9 @@
     <ClCompile Include="Hash_Table.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Header.h" />
+    <ClInclude Include="DA.h" />
+    <ClInclude Include="DLL.h" />
+    <ClInclude Include="HT.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

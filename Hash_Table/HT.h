@@ -4,8 +4,6 @@
 #include "DLL.h"
 #include "DA.h"
 
-// find
-
 namespace HT {
 
 	template <typename T>
@@ -16,26 +14,28 @@ namespace HT {
 		const double FACTOR = 0.75;
 		DA::DynArr<DLL::DoubLinList<Node*>*>* _array;
 		size_t _lists;
-		size_t _size;
+		size_t _elements;
 
-		size_t Hash(std::string key) const {
+		size_t GetHashIndex(std::string key) const {
 			size_t index = 0;
+			unsigned int q = key.length();
 
-			for (int i = 0; i < key.length(); i++) {
-				index += key[i] * pow(31, key.length() - (i + 1));
+			for (int i = 0; i < q; i++) {
+				index += key[i] * std::pow(31, q - (i + 1));
 			}
 			index = index % _array->Capacity();
 
 			return index;
 		}
 
-		void ReHash() {
+		void ExpandAndReHash() {
 			DA::DynArr<DLL::DoubLinList<Node*>*>* new_array;
+
 			try {
 				new_array = new DA::DynArr<DLL::DoubLinList<Node*>*>(_array->Factor() * _array->Capacity());
 			}
-			catch (const std::exception& ex) {
-				throw std::runtime_error("HT::ReHash() -> " + std::string(ex.what()));
+			catch (const std::bad_alloc& ex) {
+				throw std::runtime_error("HT::ExpandAndReHash() -> " + std::string(ex.what()));
 			}
 
 			DA::DynArr<DLL::DoubLinList<Node*>*>* old_array = _array;
@@ -43,29 +43,30 @@ namespace HT {
 
 			_array = new_array;
 			_lists = 0;
-			
-			for (int i = 0; i < old_array->Capacity(); i++) {
-				if ((*old_array)[i]) {
-					for (int j = 0; j < (*old_array)[i]->Size(); j++) {
-						Node* temp = (*(*old_array)[i])[j];
-						Paste(temp);
+
+			try {
+				for (int i = 0; i < old_array->Capacity(); i++) {
+					if ((*old_array)[i]) {
+						for (int j = 0; j < (*old_array)[i]->Size(); j++) {
+							Node* temp = (*(*old_array)[i])[j];
+							PasteNode(temp);
+						}
+						delete (*old_array)[i];
 					}
 				}
 			}
-
+			catch (const std::bad_alloc& ex) {
+				throw std::runtime_error("HT::ExpandAndReHash() -> " + std::string(ex.what()));
+			}
+			
 			delete old_array;
 		}
 
-		void Paste(Node* node) {
-			size_t index = Hash(node->key);
+		void PasteNode(Node* node) {
+			size_t index = GetHashIndex(node->key);
 
 			if (!(*_array)[index]) {
-				try {
-					(*_array)[index] = new DLL::DoubLinList<Node*>();
-				}
-				catch (const std::exception& ex) {
-					throw std::runtime_error("HT::Paste() -> " + std::string(ex.what()));
-				}
+				(*_array)[index] = new DLL::DoubLinList<Node*>();
 				_lists++;
 			}
 
@@ -73,11 +74,11 @@ namespace HT {
 				(*_array)[index]->Push(node);
 			}
 			catch (const std::exception& ex) {
-				throw std::runtime_error("HT::Paste() -> " + std::string(ex.what()));
+				throw std::runtime_error("HT::PasteNode() -> " + std::string(ex.what()));
 			}
 		}
 
-		double CalculateLoad() const {
+		double CalculateArrayLoad() const {
 			if (_lists) {
 				return 100 / (double(_array->Capacity()) / double(_lists));
 			}
@@ -115,7 +116,7 @@ namespace HT {
 
 		double CalculateListElementAvgCount() const {
 			if (_lists) {
-				return double(_size) / double(_lists);
+				return double(_elements) / double(_lists);
 			}
 			return 0;
 		}
@@ -129,16 +130,17 @@ namespace HT {
 			Node(std::string in_key, T in_value) : key(in_key), value(in_value) {}
 		};
 
-		HashTable() : _lists(0), _size(0) {
+		HashTable() : _lists(0), _elements(0) {
 			try {
 				_array = new DA::DynArr<DLL::DoubLinList<Node*>*>(1024);
 			}
-			catch (const std::exception& ex) {
+			catch (const std::bad_alloc& ex) {
 				throw std::runtime_error("HT::HashTable() -> " + std::string(ex.what()));
 			}
 		}
 
 		~HashTable() {
+			Erase();
 			delete _array;
 		}
 
@@ -146,8 +148,8 @@ namespace HT {
 			return _lists;
 		}
 
-		size_t Size() const {
-			return _size;
+		size_t Elements() const {
+			return _elements;
 		}
 
 		size_t Capacity() const {
@@ -158,47 +160,34 @@ namespace HT {
 			if ((*_array)[index]) {
 				return (*_array)[index]->Size();
 			}
-			throw std::runtime_error("HT::ListSize(): index (" + std::to_string(index) + ") was nullptr");
+			return 0;
 		}
 
 		void Push(std::string key, T value) {
 			Node* node = new Node(key, value);
-			size_t index = Hash(key);
+			size_t index = GetHashIndex(key);
 			
 			if (!(*_array)[index]) {
-				try {
-					(*_array)[index] = new DLL::DoubLinList<Node*>();
-				}
-				catch (const std::exception& ex) {
-					throw std::runtime_error("HT::Push() -> " + std::string(ex.what()));
-				}
+				(*_array)[index] = new DLL::DoubLinList<Node*>();
 				_lists++;
 			}
 
-			Node* existing_node = nullptr;
 			try {
-				//existing_node = Find(node->key);
+				if (Node* existing_node = Find(node->key)) {
+					existing_node->value = value;
+				}
+				else {
+					(*_array)[index]->Push(node);
+					_elements++;
+				}
 			}
-			catch (const std::exception& ex) {
+			catch (const std::bad_alloc& ex) {
 				throw std::runtime_error("HT::Push() -> " + std::string(ex.what()));
 			}
-
-			if (existing_node) {
-				existing_node->value = value;
-			}
-			else {
+			
+			if (_lists > (*_array).Capacity() * FACTOR) {
 				try {
-					(*_array)[index]->Push(node);
-				}
-				catch (const std::exception& ex) {
-					throw std::runtime_error("HT::Push() -> " + std::string(ex.what()));
-				}
-				_size++;
-			}
-
-			if (_size > (*_array).Capacity() * FACTOR) {
-				try {
-					ReHash();
+					ExpandAndReHash();
 				}
 				catch (const std::exception& ex) {
 					throw std::runtime_error("HT::Push() -> " + std::string(ex.what()));
@@ -207,17 +196,18 @@ namespace HT {
 		}
 
 		Node* Find(std::string key) const {
-			size_t index = Hash(key);
+			size_t index = GetHashIndex(key);
 
 			if (!(*_array)[index]) {
 				return nullptr;
 			}
 
 			Node* temp = new Node(key);
-			Node* node = nullptr;
 
 			try {
-				node = (*_array)[index]->Find(key, [](Node* a, Node* b) -> bool { return a->key == b->key; })->data;
+				if (auto found = (*_array)[index]->Find(temp, [](Node* a, Node* b) -> bool { return a->key == b->key; })) {
+					return found->data;
+				}
 			}
 			catch (const std::exception& ex) {
 				delete temp;
@@ -225,14 +215,14 @@ namespace HT {
 			}
 
 			delete temp;
-			return node;
+			return nullptr;
 		}
 
 		void Pop(std::string key) {
-			size_t index = Hash(key);
+			size_t index = GetHashIndex(key);
 
 			if (!(*_array)[index]) {
-				throw std::runtime_error("HT::Pop(): index (" + std::to_string(index) + ") was nullptr");
+				return;
 			}
 
 			Node* temp = new Node(key);
@@ -251,23 +241,19 @@ namespace HT {
 				_lists--;
 			}
 
-			_size--;
+			_elements--;
 			delete temp;
 		}
 
 		void Erase() {
-			try {
-				for (int i = 0; i < _array->Capacity(); i++) {
-					if ((*_array)[i]) {
-						(*_array)[i]->Erase();
-					}
+			for (int i = 0; i < _array->Capacity(); i++) {
+				if ((*_array)[i]) {
+					delete (*_array)[i];
+					(*_array)[i] = nullptr;
 				}
 			}
-			catch (const std::exception& ex) {
-				throw std::runtime_error("HT::Erase() -> " + std::string(ex.what()));
-			}
 
-			_size = 0;
+			_elements = 0;
 			_lists = 0;
 		}
 
@@ -277,13 +263,13 @@ namespace HT {
 			}
 
 			std::string text = ">>> Hash Table <<<\n";
-			text += "size: " + std::to_string(int(_size)) + "\n";
-			text += "lists: " + std::to_string(int(_lists)) + "\n";
-			text += "capacity: " + std::to_string(int(_array->Capacity())) + "\n";
-			text += "load: " + std::to_string(CalculateLoad()) + "%\n";
-			text += "list min: " + std::to_string(CalculateListElementMinCount()) + "\n";
-			text += "list avg: " + std::to_string(CalculateListElementAvgCount()) + "\n";
-			text += "list max: " + std::to_string(CalculateListElementMaxCount()) + "\n";
+			text += "> elements: " + std::to_string(int(_elements)) + "\n";
+			text += "> all lists: " + std::to_string(int(_array->Capacity())) + "\n";
+			text += "> non null lists: " + std::to_string(int(_lists)) + "\n";
+			text += "> array load: " + std::to_string(CalculateArrayLoad()) + "%\n";
+			text += "> min: " + std::to_string(CalculateListElementMinCount()) + "\n";
+			text += "> avg: " + std::to_string(CalculateListElementAvgCount()) + "\n";
+			text += "> max: " + std::to_string(CalculateListElementMaxCount()) + "\n";
 			text += "{\n";
 
 			if (out_to_string) {

@@ -20,7 +20,7 @@ std::string GenerateWord(std::random_device& rd, std::default_random_engine& dre
 
 int main() {
     const int WORD_COUNT = 6;
-    const int MAX_ORDER = 5;
+    const int MAX_ORDER = 6;
 
     static std::random_device rd;
     static std::default_random_engine dre(rd());
@@ -48,7 +48,7 @@ int main() {
         std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
 
         std::chrono::duration<double> pushing_time = end_time - start_time;
-        std::cout << "Pushing time: " << pushing_time.count() << "s" << std::endl;
+        std::cout << "Pushing time: " << pushing_time.count() << "s" << std::endl << std::endl;
         std::cout << ht->ToString(8) << std::endl;
 
         int hits = 0;
@@ -58,10 +58,9 @@ int main() {
         for (int j = 1; j <= m; j++) {
             try {
                 std::string key = GenerateWord(rd, dre, WORD_COUNT);
-                /*HT::HashTable<int>::Node* entry = ht->Find(key);
-                if (entry) {
+                if (ht->Find(key)) {
                     hits++;
-                }*/
+                }
             }
             catch (const std::exception& ex) {
                 std::cerr << "Eror in find " << j << " -> " << ex.what() << std::endl;
@@ -69,12 +68,11 @@ int main() {
         }
         end_time = std::chrono::high_resolution_clock::now();
 
-        std::chrono::duration<double> removing_time = end_time - start_time;
-        std::cout << "Removing time: " << removing_time.count() << "s" << std::endl;
-        std::cout << "Hits: " << hits << std::endl;
-        std::cout << ht->ToString(8) << std::endl;
+        std::chrono::duration<double> finding_time = end_time - start_time;
+        std::cout << "Finding time: " << finding_time.count() << "s" << std::endl;
+        std::cout << "Hits: " << hits << std::endl << std::endl;
 
-        double total_time = pushing_time.count() + removing_time.count();
+        double total_time = pushing_time.count() + finding_time.count();
         std::cout << "Total time: " << total_time << "s" << std::endl;
 
         ht->Erase();

@@ -19,7 +19,8 @@ std::string GenerateWord(std::random_device& rd, std::default_random_engine& dre
 }
 
 int main() {
-    const int MAX_ORDER = 4;
+    const int WORD_COUNT = 6;
+    const int MAX_ORDER = 5;
 
     static std::random_device rd;
     static std::default_random_engine dre(rd());
@@ -35,7 +36,7 @@ int main() {
 
         std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
         for (int j = 1; j <= n; j++) {
-            std::string key = GenerateWord(rd, dre, 6);
+            std::string key = GenerateWord(rd, dre, WORD_COUNT);
             int value = rnd_num(dre);
             try {
                 ht->Push(key, value);
@@ -56,7 +57,7 @@ int main() {
         start_time = std::chrono::high_resolution_clock::now();
         for (int j = 1; j <= m; j++) {
             try {
-                std::string key = GenerateWord(rd, dre, 6);
+                std::string key = GenerateWord(rd, dre, WORD_COUNT);
                 /*HT::HashTable<int>::Node* entry = ht->Find(key);
                 if (entry) {
                     hits++;

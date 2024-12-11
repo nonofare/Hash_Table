@@ -185,7 +185,7 @@ namespace HT {
 				throw std::runtime_error("HT::Push() -> " + std::string(ex.what()));
 			}
 			
-			if (_lists > (*_array).Capacity() * FACTOR) {
+			if (_elements > (*_array).Capacity() * FACTOR) {
 				try {
 					ExpandAndReHash();
 				}
